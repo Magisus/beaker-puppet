@@ -183,6 +183,7 @@ module Beaker
             puppetserver_opts = { "jruby-puppet" => {
               "master-conf-dir" => confdir,
               "master-var-dir" => vardir,
+              "allow-subject-alt-names" => true,
             }}
 
             puppetserver_conf = File.join("#{host['puppetserver-confdir']}", "puppetserver.conf")
@@ -826,14 +827,14 @@ module Beaker
             if [master, dashboard, database].include? current_host
 
               on current_host, puppet( 'agent -t' ), :acceptable_exit_codes => [0,1,2]
-              on master, puppet( "cert --allow-dns-alt-names sign #{current_host}" ), :acceptable_exit_codes => [0,24]
+              on master, "puppetserver ca sign --certname #{current_host}", :acceptable_exit_codes => [0,24]
 
             else
               hostnames << Regexp.escape( current_host.node_name )
             end
           }
           if hostnames.size < 1
-            on master, puppet("cert --sign --all --allow-dns-alt-names"),
+            on master, "puppetserver ca sign --all",
                :acceptable_exit_codes => [0,24]
             return
           end
@@ -845,8 +846,8 @@ module Beaker
                 fail_test("Failed to sign cert for #{hostnames}")
                 hostnames.clear
               end
-              on master, puppet("cert --sign --all --allow-dns-alt-names"), :acceptable_exit_codes => [0,24]
-              out = on(master, puppet("cert --list --all")).stdout
+              on master, "puppetserver ca sign --all", :acceptable_exit_codes => [0,24]
+              out = on(master, "puppetserver ca list --all").stdout
               if hostnames.all? { |hostname| out =~ /\+ "?#{hostname}"?/ }
                 hostnames.clear
                 break

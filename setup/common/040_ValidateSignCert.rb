@@ -19,13 +19,8 @@ test_name "Validate Sign Cert" do
   end
 
   step "Start puppetserver" do
-    master_opts = {
-      :main => {
-        :dns_alt_names => "puppet,#{hostname},#{fqdn}",
-      },
-    }
-    # server will generate the CA and server certs when it starts
-    with_puppet_running_on(master, master_opts) do
+    on master, "puppetserver ca generate --subject-alt-names 'puppet,#{hostname},#{fqdn}'"
+    with_puppet_running_on(master, {}) do
       agents.each do |agent|
         next if agent == master
 
@@ -35,7 +30,7 @@ test_name "Validate Sign Cert" do
 
       # Sign all waiting agent certs
       step "Server: sign all agent certs"
-      on master, puppet("cert --sign --all"), :acceptable_exit_codes => [0,24]
+      on master, "puppetserver ca sign --all", :acceptable_exit_codes => [0,24]
 
       step "Agents: Run agent --test second time to obtain signed cert"
       on agents, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0,2]
