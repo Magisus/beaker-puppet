@@ -151,14 +151,15 @@ module Beaker
         #       ...tests to be run...
         #     end
         #
-        def with_puppet_running_on(host, conf_opts, testdir = host.tmpdir(File.basename(@path)), &block)
-          raise(ArgumentError, "with_puppet_running_on's conf_opts must be a Hash. You provided a #{conf_opts.class}: '#{conf_opts}'") if !conf_opts.kind_of?(Hash)
-          cmdline_args = conf_opts[:__commandline_args__]
-          service_args = conf_opts[:__service_args__] || {}
+        def with_puppet_running_on(host, puppet_opts, ca_opts = {}, testdir = host.tmpdir(File.basename(@path)), &block)
+          raise(ArgumentError, "with_puppet_running_on's puppet_opts must be a Hash. You provided a #{puppet_opts.class}: '#{puppet_opts}'") if !puppet_opts.kind_of?(Hash)
+          raise(ArgumentError, "with_puppet_running_on's ca_opts must be a Hash. You provided a #{ca_opts.class}: '#{ca_opts}'") if !ca_opts.kind_of?(Hash)
+          cmdline_args = puppet_opts[:__commandline_args__]
+          service_args = puppet_opts[:__service_args__] || {}
           restart_when_done = true
           restart_when_done = host[:restart_when_done] if host.has_key?(:restart_when_done)
           restart_when_done = conf_opts.fetch(:restart_when_done, restart_when_done)
-          conf_opts = conf_opts.reject { |k,v| [:__commandline_args__, :__service_args__, :restart_when_done].include?(k) }
+          puppet_opts = puppet_opts.reject { |k,v| [:__commandline_args__, :__service_args__, :restart_when_done].include?(k) }
 
           curl_retries = host['master-start-curl-retries'] || options['master-start-curl-retries']
           logger.debug "Setting curl retries to #{curl_retries}"
@@ -180,11 +181,13 @@ module Beaker
               end
             end
 
-            puppetserver_opts = { "jruby-puppet" => {
-              "master-conf-dir" => confdir,
-              "master-var-dir" => vardir,
-              "allow-subject-alt-names" => true,
-            }}
+            puppetserver_opts = {
+              "jruby-puppet" => {
+                "master-conf-dir" => confdir,
+                "master-var-dir" => vardir,
+              },
+              "certificate-authority" => ca_opts
+            }
 
             puppetserver_conf = File.join("#{host['puppetserver-confdir']}", "puppetserver.conf")
             modify_tk_config(host, puppetserver_conf, puppetserver_opts)
@@ -194,7 +197,7 @@ module Beaker
                                           puppet_config(host, 'confdir', section: 'master'),
                                           testdir,
                                           'puppet.conf')
-            lay_down_new_puppet_conf host, conf_opts, testdir
+            lay_down_new_puppet_conf host, puppet_opts, testdir
 
             if host.use_service_scripts? && !service_args[:bypass_service_script]
               bounce_service( host, host['puppetservice'], curl_retries )
@@ -261,8 +264,8 @@ module Beaker
         # Test Puppet running in a certain run mode with specific options,
         # on the default host
         # @see #with_puppet_running_on
-        def with_puppet_running conf_opts, testdir = host.tmpdir(File.basename(@path)), &block
-          with_puppet_running_on(default, conf_opts, testdir, &block)
+        def with_puppet_running(puppet_opts, ca_opts = {}, testdir = host.tmpdir(File.basename(@path)), &block)
+          with_puppet_running_on(default, puppet_opts, ca_opts, testdir, &block)
         end
 
         # @!visibility private
