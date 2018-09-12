@@ -62,6 +62,7 @@ module Beaker
               platform = 'unix'
             end
             add_platform_aio_defaults(host, platform)
+            require 'pry'; binding.pry
           end
         end
 

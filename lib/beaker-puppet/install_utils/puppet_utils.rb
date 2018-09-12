@@ -128,6 +128,7 @@ module Beaker
                 has_defaults = true
               end
             end
+            require 'pry'; binding.pry
             if aio_version?(host)
               add_aio_defaults_on(host)
               has_defaults = true

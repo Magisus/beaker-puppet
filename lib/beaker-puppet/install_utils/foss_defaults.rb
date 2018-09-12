@@ -171,6 +171,7 @@ module Beaker
               platform = 'windows'
             end
             add_platform_foss_defaults(host, platform)
+            require 'pry'; binding.pry
           end
         end
 
